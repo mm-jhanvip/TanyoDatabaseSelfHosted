@@ -1,0 +1,167 @@
+/*
+====================================================================
+IMPORTANT: If any changes in Parameters or in WHERE clause, please do update [dbo].[LisLeadByModule] SP.
+====================================================================
+EXEC [dbo].[GetLeadCountByModule]
+    @TenantId = 2
+    ,@CurrentUserId = 4279
+    ,@RoleId = '555D131D-3306-40AC-9A7B-6CBDA78A1C2F'
+    ,@CustomerName = NULL
+    ,@StatusId = NULL
+    ,@SalesmanId = NULL
+    ,@PhoneNumber = NULL
+    ,@InquiryFromDate = NULL
+    ,@InquiryToDate = NULL
+    ,@FollowUpFromDate = NULL
+    ,@FollowUpToDate = NULL
+    ,@LeadSourceId = NULL
+    ,@CustomerId = NULL
+    ,@LeadNumber = NULL
+    ,@PriorityId = NULL
+    ,@BuyingRangeValueId = NULL
+====================================================================  
+*/
+
+CREATE PROC [dbo].[GetLeadCountByModule]
+(
+    @TenantId INT
+    ,@CurrentUserId BIGINT
+    ,@RoleId NVARCHAR(100)
+    ,@CustomerName VARCHAR(200) = NULL
+    ,@StatusId INT = NULL
+    ,@SalesmanId BIGINT = NULL
+    ,@PhoneNumber VARCHAR(50) = NULL
+    ,@InquiryFromDate DATE = NULL
+    ,@InquiryToDate DATE = NULL
+    ,@FollowUpFromDate DATE = NULL
+    ,@FollowUpToDate DATE = NULL
+    ,@LeadSourceId BIGINT = NULL
+    ,@CustomerId BIGINT = NULL
+    ,@LeadNumber VARCHAR(15) = NULL
+    ,@PriorityId INT = NULL
+    ,@BuyingRangeValueId BIGINT = NULL
+)
+WITH ENCRYPTION
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+
+        DECLARE @dt DATE = GETDATE();
+        DECLARE @IsAdmin BIT = 0, @HasSuperAccess BIT = 0;
+
+        ------------------------------------------
+        -- ROLE CHECK
+        ------------------------------------------
+        IF EXISTS (
+            SELECT 1 FROM AspNetRoles WITH (NOLOCK)
+            WHERE Id = @RoleId
+            AND [Name] = 'Administrator_' + CAST(@TenantId AS VARCHAR(5))
+        )
+            SET @IsAdmin = 1;
+
+        IF EXISTS (
+            SELECT 1 FROM AspNetRoleClaims WITH (NOLOCK)
+            WHERE RoleId = @RoleId
+            AND ClaimValue = 'Permissions.App.Lead.SuperAccess'
+        )
+            SET @HasSuperAccess = 1;
+
+        ------------------------------------------
+        -- USER LOCATION
+        ------------------------------------------
+        CREATE TABLE #UserLocations (LocationID INT);
+
+        INSERT INTO #UserLocations
+        SELECT LocationID
+        FROM LocationUserMapping WITH (NOLOCK)
+        WHERE UserId = @CurrentUserId;
+
+        ------------------------------------------
+        -- MAIN COUNT QUERY
+        ------------------------------------------
+        SELECT 
+            ISNULL(SUM(CASE WHEN Module = 'Today' THEN 1 ELSE 0 END),0) AS TodayCount
+            ,ISNULL(SUM(CASE WHEN Module = 'Overdue' THEN 1 ELSE 0 END),0) AS OverdueCount
+            ,ISNULL(SUM(CASE WHEN Module = 'Upcoming' THEN 1 ELSE 0 END),0) AS UpcomingCount
+            ,ISNULL(SUM(CASE WHEN Module = 'Remaining' THEN 1 ELSE 0 END),0) AS RemainingCount
+
+        FROM (
+            SELECT 
+                CASE
+                    WHEN fu.FollowUpDate IS NOT NULL AND CAST(fu.FollowUpDate AS DATE) = @dt THEN 'Today'
+                    WHEN fu.FollowUpDate IS NOT NULL AND fu.FollowUpDate < @dt THEN 'Overdue'
+                    WHEN fu.FollowUpDate IS NOT NULL AND fu.FollowUpDate > @dt THEN 'Upcoming'
+                    ELSE 'Remaining'
+                END AS Module
+
+            FROM Leads l WITH (NOLOCK)
+            LEFT JOIN Customers cust WITH (NOLOCK)
+                ON l.CustomerId = cust.CustomerId
+                AND cust.TenantId = @TenantId
+            LEFT JOIN AspNetUsers u WITH (NOLOCK)
+                ON l.SalesmanId = u.UserId
+            OUTER APPLY (
+                SELECT TOP 1 FollowUpDate
+                FROM FollowUpLeads f WITH (NOLOCK)
+                WHERE f.LeadId = l.LeadId
+                ORDER BY f.FollowUpDate DESC
+            ) fu
+            WHERE 
+                l.TenantId = @TenantId
+   --AND l.Status NOT IN (5,6)
+                AND (
+                    (@StatusId IS NULL AND l.STATUS NOT IN (5,6))
+                    OR
+                    (@StatusId IS NOT NULL AND l.STATUS = @StatusId)
+                )
+                AND EXISTS (
+                    SELECT 1 FROM #UserLocations ul
+                    WHERE ul.LocationID = l.LocationID
+                )
+                AND (
+                    @IsAdmin = 1
+                    OR @HasSuperAccess = 1
+                    OR l.SalesmanId = @CurrentUserId
+                )
+                ------------------------------------------
+                -- SAME FILTERS (IMPORTANT)
+                ------------------------------------------
+                AND (@CustomerName IS NULL OR 
+                    (cust.FirstName + ' ' + ISNULL(cust.LastName, '') LIKE '%' + @CustomerName + '%'))
+                AND (@SalesmanId IS NULL OR l.SalesmanId = @SalesmanId)
+                AND (@PhoneNumber IS NULL OR 
+                    ISNULL(cust.PhoneNumber,l.PhoneNumber) LIKE '%' + @PhoneNumber + '%')
+                AND (@InquiryFromDate IS NULL OR l.CreatedDate >= @InquiryFromDate)
+                AND (@InquiryToDate IS NULL OR l.CreatedDate <= @InquiryToDate)
+                AND (@FollowUpFromDate IS NULL OR fu.FollowUpDate >= @FollowUpFromDate)
+                AND (@FollowUpToDate IS NULL OR fu.FollowUpDate <= @FollowUpToDate)
+                AND (@LeadSourceId IS NULL OR l.LeadSourceId = @LeadSourceId)
+                AND (@CustomerId IS NULL OR l.CustomerId = @CustomerId)
+                AND (@LeadNumber IS NULL OR l.LeadNumber like '%' +  @LeadNumber + '%')
+                AND (@PriorityId IS NULL OR l.Priority = @PriorityId)
+                AND (@BuyingRangeValueId IS NULL OR l.BuyingRangeValueId = @BuyingRangeValueId)
+        ) X;
+
+        DROP TABLE #UserLocations;
+
+    END TRY
+
+BEGIN CATCH
+	IF OBJECT_ID('tempdb..#UserLocations') IS NOT NULL
+		DROP TABLE #UserLocations;
+
+	DECLARE @ObjectName VARCHAR(400),
+			@ERRORMsg VARCHAR(MAX);
+
+	SET @ObjectName = OBJECT_NAME(@@PROCID);
+	SET @ErrorMsg = ERROR_MESSAGE();
+
+	EXEC dbo.SaveDBErrorLog @ObjectName = @ObjectName
+		,@ErrorMsg = @ErrorMsg;
+END CATCH
+END
+
+GO
+

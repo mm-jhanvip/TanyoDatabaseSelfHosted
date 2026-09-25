@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build">
+  <Sdk Name="Microsoft.Build.Sql" Version="2.2.0" />
+  <PropertyGroup>
+    <Name>TanyoAppDB</Name>
+    <ProjectGuid>{20869552-E63E-419C-B8FB-097C120815E4}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
+    <ModelCollation>1033, CI</ModelCollation>
+    <SuppressTSqlWarnings>71501,71508,71562</SuppressTSqlWarnings>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include=".vscode\tasks.json" />
+    <PackageReference Include="Microsoft.SqlServer.Dacpacs.Master" Version="160.2.8" GeneratePathProperty="true" />
+    <ArtifactReference Include="$(PkgMicrosoft_SqlServer_Dacpacs_Master)\tools\master.dacpac">
+      <HintPath>$(PkgMicrosoft_SqlServer_Dacpacs_Master)\tools\master.dacpac</HintPath>
+      <DatabaseVariable>master</DatabaseVariable>
+    </ArtifactReference>
+    <ArtifactReference Include="..\TanyoLogsDB\bin\Debug\TanyoLogsDB.dacpac">
+      <HintPath>..\TanyoLogsDB\bin\Debug\TanyoLogsDB.dacpac</HintPath>
+      <DatabaseSqlCmdVariable>TanyoLogs</DatabaseSqlCmdVariable>
+    </ArtifactReference>
+    <Build Remove="Security\**\*.sql" />
+    <Build Remove="Views\UT_VW_ValidateInverntoryLogData.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <SqlCmdVariable Include="TanyoLogs">
+      <Value>$(SqlCmdVar__1)</Value>
+      <DefaultValue>
+      </DefaultValue>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="DatabaseMailPassword">
+      <Value>$(SqlCmdVar__2)</Value>
+      <DefaultValue>__REQUIRED_DATABASE_MAIL_PASSWORD__</DefaultValue>
+    </SqlCmdVariable>
+    <PostDeploy Include="PostDeployment\SQLAgentJobs.sql" />
+  </ItemGroup>
+  <Target Name="BeforeBuild">
+    <Delete Files="$(BaseIntermediateOutputPath)\project.assets.json" />
+  </Target>
+</Project>

@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.vscode/
+*.user
+*.suo
+*.publish.xml
+*.userprefs
+*.local.sql
+
+# Instance-level login scripts and credentials
+**/Security/*login*.sql
+**/Security/*password*.sql
+
+# Contains a hardcoded application credential and requires remediation
+TanyoAppDB/Views/UserData.sql

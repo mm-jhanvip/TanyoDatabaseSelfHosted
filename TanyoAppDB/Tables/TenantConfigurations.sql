@@ -1,0 +1,33 @@
+CREATE TABLE [dbo].[TenantConfigurations] (
+    [TenantConfigurationID]           BIGINT             IDENTITY (1, 1) NOT NULL,
+    [TenantId]                        BIGINT             NOT NULL,
+    [IsGSTVisibleForInvoice]          BIT                CONSTRAINT [DF_TenantConfigurations_IsGSTVisibleForInvoice] DEFAULT ((1)) NOT NULL,
+    [IsGSTVisibleForQuotation]        BIT                CONSTRAINT [DF_TenantConfigurations_IsGSTVisibleForQuotation] DEFAULT ((1)) NOT NULL,
+    [WebsiteURL]                      VARCHAR (250)      NULL,
+    [CreatedBy]                       INT                NOT NULL,
+    [CreatedDate]                     DATETIMEOFFSET (7) CONSTRAINT [DF_TenantConfigurations_CreatedDate] DEFAULT (sysdatetimeoffset()) NOT NULL,
+    [CreatedUTCDate]                  DATETIME           CONSTRAINT [DF_TenantConfigurations_CreatedUTCDate] DEFAULT (getutcdate()) NOT NULL,
+    [UpdatedBy]                       INT                NULL,
+    [UpdatedDate]                     DATETIMEOFFSET (7) NULL,
+    [UpdatedUTCDate]                  DATETIME           NULL,
+    [IsFabricAsProduct]               BIT                CONSTRAINT [DF_IsFabricAsProduct_TenantConfigurations] DEFAULT ((1)) NOT NULL,
+    [OrderNumberGenerationType]       BIT                CONSTRAINT [DF_OrderNumberGenerationType_TenantConfigurations] DEFAULT ((0)) NOT NULL,
+    [OrderNumberCounter]              BIGINT             CONSTRAINT [DF_OrderNumberCounter_TenantConfigurations] DEFAULT ((0)) NOT NULL,
+    [IsManufacturing]                 BIT                CONSTRAINT [DF_TenantConfigurations_IsManufacturing] DEFAULT ((0)) NOT NULL,
+    [LeadNumberCounter]               BIGINT             CONSTRAINT [DF_TenantConfigurations_LeadNumberCounter] DEFAULT ((0)) NOT NULL,
+    [IsSplitAllowed]                  BIT                CONSTRAINT [DF_TenantConfigurations_IsSplitAllowed] DEFAULT ((0)) NOT NULL,
+    [IsAllowDimensionsChange]         BIT                DEFAULT ((1)) NOT NULL,
+    [IsAllowDiscount]                 BIT                DEFAULT ((1)) NOT NULL,
+    [PONumberGenerationType]          BIT                CONSTRAINT [DF_TenantConfigurations_PONumberGenerationType] DEFAULT ((1)) NOT NULL,
+    [PONumberCounter]                 INT                CONSTRAINT [DF_TenantConfigurations_PONumberCounter] DEFAULT ((0)) NOT NULL,
+    [EnableProductProcessingWorkflow] BIT                DEFAULT ((0)) NOT NULL,
+    [StockTransferNumberCounter]      BIGINT             DEFAULT ((0)) NULL,
+    [InwardEntryNumberCounter]        BIGINT             DEFAULT ((0)) NOT NULL,
+    [IsSpecialDiscount]               BIT                CONSTRAINT [DF_TenantConfigurations_IsSpecialDiscount] DEFAULT ((0)) NOT NULL,
+    [UseAsOfNowStock]                 BIT                CONSTRAINT [DF_TenantConfigurations_UseAsOfNowStock] DEFAULT ((0)) NOT NULL,
+    PRIMARY KEY CLUSTERED ([TenantConfigurationID] ASC)
+);
+
+
+GO
+
