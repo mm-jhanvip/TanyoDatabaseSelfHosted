@@ -6,3 +6,6 @@ CREATE TABLE dbo.NewTestTable
     IsActive BIT NOT NULL DEFAULT (1),
     CreatedDate DATETIME2 NOT NULL DEFAULT (GETDATE())
 );
+
+ALTER TABLE dbo.NewTestTable
+ADD POProductItemId BIGINT NULL;
