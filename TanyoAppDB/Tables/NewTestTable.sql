@@ -4,8 +4,6 @@ CREATE TABLE dbo.NewTestTable
     Name NVARCHAR(300) NOT NULL,
     Description NVARCHAR(500) NULL,
     IsActive BIT NOT NULL DEFAULT (1),
-    CreatedDate DATETIME2 NOT NULL DEFAULT (GETDATE())
+    CreatedDate DATETIME2 NOT NULL DEFAULT (GETDATE()),
+    [POProductItemId] BIGINT NULL,
 );
-
-ALTER TABLE dbo.NewTestTable
-ADD POProductItemId BIGINT NULL;
